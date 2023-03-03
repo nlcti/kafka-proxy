@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/grepplabs/kafka-proxy/plugin/cert-provider/proto";
+
+package proto;
+
+message CertificateRequest {
+    string expiryDate = 1;
+}
+
+message CertificateResponse {
+    bytes certPEMBlock = 1;
+    bytes keyPEMBlock = 2;
+}
+
+service CertificateProvider {
+    rpc GetX509KeyPair(CertificateRequest) returns (CertificateResponse);
+}
