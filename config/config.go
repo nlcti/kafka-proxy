@@ -90,6 +90,12 @@ type Config struct {
 			ClientCert               struct {
 				Subjects []string
 			}
+			Plugin struct {
+				Enable     bool
+				Command    string
+				Parameters []string
+				LogLevel   string
+			}
 		}
 	}
 	Auth struct {
@@ -365,8 +371,11 @@ func (c *Config) Validate() error {
 	if c.Proxy.ListenerKeepAlive < 0 {
 		return errors.New("ListenerKeepAlive must be greater or equal 0")
 	}
-	if c.Proxy.TLS.Enable && (c.Proxy.TLS.ListenerKeyFile == "" || c.Proxy.TLS.ListenerCertFile == "") {
+	if c.Proxy.TLS.Enable && (c.Proxy.TLS.ListenerKeyFile == "" || c.Proxy.TLS.ListenerCertFile == "") && !c.Proxy.TLS.Plugin.Enable {
 		return errors.New("ListenerKeyFile and ListenerCertFile are required when Proxy TLS is enabled")
+	}
+	if c.Proxy.TLS.Enable && c.Proxy.TLS.Plugin.Enable && c.Proxy.TLS.Plugin.Command == "" {
+		return errors.New("Command is required when Proxy.TLS.Plugin.Enable is enabled")
 	}
 	if c.Kafka.TLS.SameClientCertEnable && (!c.Kafka.TLS.Enable || c.Kafka.TLS.ClientCertFile == "" || !c.Proxy.TLS.Enable) {
 		return errors.New("ClientCertFile is required on Kafka TLS and TLS must be enabled on both Proxy and Kafka connections when SameClientCertEnable is enabled")
