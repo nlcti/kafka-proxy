@@ -10,6 +10,7 @@ import (
 
 	"github.com/grepplabs/kafka-proxy/config"
 	"github.com/grepplabs/kafka-proxy/pkg/apis"
+	"github.com/grepplabs/kafka-proxy/pkg/libs/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -53,7 +54,7 @@ func NewClient(conns *ConnSet, c *config.Config, netAddressMappingFunc config.Ne
 
 	var kafkaClientCert *x509.Certificate = nil
 	if c.Kafka.TLS.SameClientCertEnable {
-		kafkaClientCert, err = parseCertificate(c.Kafka.TLS.ClientCertFile)
+		kafkaClientCert, err = util.ParseCertificateFile(c.Kafka.TLS.ClientCertFile)
 		if err != nil {
 			return nil, err
 		}
