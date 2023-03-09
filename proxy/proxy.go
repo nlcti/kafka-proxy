@@ -32,7 +32,7 @@ type Listeners struct {
 	lock                   sync.RWMutex
 }
 
-func NewListeners(cfg *config.Config) (*Listeners, error) {
+func NewListeners(cfg *config.Config, tlsCertificateClient *TLSCertificateClient) (*Listeners, error) {
 
 	defaultListenerIP := cfg.Proxy.DefaultListenerIP
 	dynamicAdvertisedListener := cfg.Proxy.DynamicAdvertisedListener
@@ -46,7 +46,7 @@ func NewListeners(cfg *config.Config) (*Listeners, error) {
 	var tlsConfig *tls.Config
 	if cfg.Proxy.TLS.Enable {
 		var err error
-		tlsConfig, err = newTLSListenerConfig(cfg)
+		tlsConfig, err = newTLSListenerConfig(cfg, tlsCertificateClient)
 		if err != nil {
 			return nil, err
 		}

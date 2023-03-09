@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/grepplabs/kafka-proxy/pkg/apis"
+	certprovider "github.com/grepplabs/kafka-proxy/plugin/cert-provider/shared"
 	localauth "github.com/grepplabs/kafka-proxy/plugin/local-auth/shared"
 	tokeninfo "github.com/grepplabs/kafka-proxy/plugin/token-info/shared"
 	tokenprovider "github.com/grepplabs/kafka-proxy/plugin/token-provider/shared"
@@ -158,6 +159,12 @@ func initFlags() {
 
 	//Same TLS client cert tls-same-client-cert-enable
 	Server.Flags().BoolVar(&c.Kafka.TLS.SameClientCertEnable, "tls-same-client-cert-enable", false, "Use only when mutual TLS is enabled on proxy and broker. It controls whether a proxy validates if proxy client certificate exactly matches brokers client cert (tls-client-cert-file)")
+
+	// TLS certificate by Proxy plugin
+	Server.Flags().BoolVar(&c.Proxy.TLS.Plugin.Enable, "cert-provider-plugin-enable", false, "Use plugin for TLS certificate")
+	Server.Flags().StringVar(&c.Proxy.TLS.Plugin.Command, "cert-provider-plugin-command", "", "Path to certificate provider plugin binary")
+	Server.Flags().StringArrayVar(&c.Proxy.TLS.Plugin.Parameters, "cert-provider-plugin-param", []string{}, "Certificate provider plugin parameter")
+	Server.Flags().StringVar(&c.Proxy.TLS.Plugin.LogLevel, "cert-provider-plugin-log-level", "trace", "Log level of the certificate provider plugin")
 
 	// SASL by Proxy
 	Server.Flags().BoolVar(&c.Kafka.SASL.Enable, "sasl-enable", false, "Connect using SASL")
@@ -368,12 +375,48 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	var certificateProvider apis.CertificateProvider
+	if c.Proxy.TLS.Plugin.Enable {
+		var err error
+		factory, ok := registry.GetComponent(new(apis.CertificateProviderFactory), c.Proxy.TLS.Plugin.Command).(apis.CertificateProviderFactory)
+		if ok {
+			logrus.Infof("Using built-in '%s' CertificateProvider for TLS certificate", c.Proxy.TLS.Plugin.Command)
+			certificateProvider, err = factory.New(c.Proxy.TLS.Plugin.Parameters)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		} else {
+			client := NewPluginClient(certprovider.Handshake, certprovider.PluginMap, c.Proxy.TLS.Plugin.LogLevel, c.Proxy.TLS.Plugin.Command, c.Proxy.TLS.Plugin.Parameters)
+			defer client.Kill()
+
+			rpcClient, err := client.Client()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			raw, err := rpcClient.Dispense("certificateProvider")
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			certificateProvider, ok = raw.(apis.CertificateProvider)
+			if !ok {
+				logrus.Fatal(errors.New("unsupported CertificateProvider plugin type"))
+			}
+		}
+	}
+
 	var g run.Group
 	{
 		// All active connections are stored in this variable.
 		connset := proxy.NewConnSet()
 		prometheus.MustRegister(proxy.NewCollector(connset))
-		listeners, err := proxy.NewListeners(c)
+
+		var tlsCertificateClient *proxy.TLSCertificateClient
+		if c.Proxy.TLS.Plugin.Enable && certificateProvider == nil {
+			logrus.Fatal(errors.New("Proxy.TLS.Plugin.Enable is enabled but certificateProvider is nil"))
+		} else if c.Proxy.TLS.Plugin.Enable && certificateProvider != nil {
+			tlsCertificateClient = proxy.NewCertificateClient(certificateProvider)
+		}
+		listeners, err := proxy.NewListeners(c, tlsCertificateClient)
 		if err != nil {
 			logrus.Fatal(err)
 		}

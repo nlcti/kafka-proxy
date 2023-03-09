@@ -51,28 +51,40 @@ var (
 	zeroTime = time.Time{}
 )
 
-func newTLSListenerConfig(conf *config.Config) (*tls.Config, error) {
+func createTLSListenerCertificate(conf *config.Config) (tls.Certificate, error) {
 	opts := conf.Proxy.TLS
 
 	if opts.ListenerKeyFile == "" || opts.ListenerCertFile == "" {
-		return nil, errors.New("Listener key and cert files must not be empty")
+		return tls.Certificate{}, errors.New("Listener key and cert files must not be empty")
 	}
 	certPEMBlock, err := ioutil.ReadFile(opts.ListenerCertFile)
 	if err != nil {
-		return nil, err
+		return tls.Certificate{}, err
 	}
 	keyPEMBlock, err := ioutil.ReadFile(opts.ListenerKeyFile)
 	if err != nil {
-		return nil, err
+		return tls.Certificate{}, err
 	}
 	keyPEMBlock, err = decryptPEM(keyPEMBlock, opts.ListenerKeyPassword)
 	if err != nil {
-		return nil, err
+		return tls.Certificate{}, err
 	}
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return nil, err
+	return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+}
+
+func newTLSListenerConfig(conf *config.Config, tlsCertificateClient *TLSCertificateClient) (*tls.Config, error) {
+	var cert tls.Certificate
+	var err error
+
+	opts := conf.Proxy.TLS
+
+	if tlsCertificateClient == nil {
+		cert, err = createTLSListenerCertificate(conf)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	cipherSuites, err := getCipherSuites(opts.ListenerCipherSuites)
 	if err != nil {
 		return nil, err
@@ -83,13 +95,19 @@ func newTLSListenerConfig(conf *config.Config) (*tls.Config, error) {
 	}
 
 	cfg := &tls.Config{
-		Certificates:             []tls.Certificate{cert},
 		ClientAuth:               tls.NoClientCert,
 		PreferServerCipherSuites: true,
 		MinVersion:               tls.VersionTLS12,
 		CurvePreferences:         curvePreferences,
 		CipherSuites:             cipherSuites,
 	}
+
+	if tlsCertificateClient == nil {
+		cfg.Certificates = []tls.Certificate{cert}
+	} else {
+		cfg.GetCertificate = tlsCertificateClient.GetCertificate
+	}
+
 	if opts.CAChainCertFile != "" {
 		caCertPEMBlock, err := ioutil.ReadFile(opts.CAChainCertFile)
 		if err != nil {

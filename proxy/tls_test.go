@@ -28,7 +28,7 @@ func TestDefaultCipherSuites(t *testing.T) {
 	c.Proxy.TLS.ListenerCipherSuites = []string{}
 	c.Proxy.TLS.ListenerCurvePreferences = []string{}
 
-	serverConfig, err := newTLSListenerConfig(c)
+	serverConfig, err := newTLSListenerConfig(c, nil)
 	a.Nil(err)
 	a.Nil(serverConfig.CipherSuites)
 	a.Nil(serverConfig.CurvePreferences)
@@ -46,7 +46,7 @@ func TestEnabledCipherSuitesAndCurves(t *testing.T) {
 	c.Proxy.TLS.ListenerCipherSuites = []string{"TLS_AES_128_GCM_SHA256", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"}
 	c.Proxy.TLS.ListenerCurvePreferences = []string{"P521"}
 
-	serverConfig, err := newTLSListenerConfig(c)
+	serverConfig, err := newTLSListenerConfig(c, nil)
 	a.Nil(err)
 	a.Equal(2, len(serverConfig.CipherSuites))
 	a.Equal(1, len(serverConfig.CurvePreferences))
@@ -73,7 +73,7 @@ func TestAllCipherSuitesAndCurves(t *testing.T) {
 	c.Proxy.TLS.ListenerCipherSuites = allSupportedCipherSuites
 	c.Proxy.TLS.ListenerCurvePreferences = allSupportedCurvesSuites
 
-	serverConfig, err := newTLSListenerConfig(c)
+	serverConfig, err := newTLSListenerConfig(c, nil)
 	a.Nil(err)
 	a.Equal(len(allSupportedCipherSuites), len(serverConfig.CipherSuites))
 	a.Equal(len(allSupportedCurvesSuites), len(serverConfig.CurvePreferences))
@@ -90,7 +90,7 @@ func TestUnsupportedCipherSuite(t *testing.T) {
 	c.Proxy.TLS.ListenerKeyFile = bundle.ServerKey.Name()
 	c.Proxy.TLS.ListenerCipherSuites = []string{"TLS_unknown"}
 
-	_, err := newTLSListenerConfig(c)
+	_, err := newTLSListenerConfig(c, nil)
 	a.NotNil(err)
 }
 
@@ -105,7 +105,7 @@ func TestUnsupportedCurve(t *testing.T) {
 	c.Proxy.TLS.ListenerKeyFile = bundle.ServerKey.Name()
 	c.Proxy.TLS.ListenerCurvePreferences = []string{"unknown"}
 
-	_, err := newTLSListenerConfig(c)
+	_, err := newTLSListenerConfig(c, nil)
 	a.NotNil(err)
 }
 

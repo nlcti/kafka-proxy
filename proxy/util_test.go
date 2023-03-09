@@ -88,7 +88,7 @@ func localPipe(listener net.Listener, dialer proxy.Dialer, timeout time.Duration
 func makeTLSPipe(conf *config.Config, expectedClientCert *x509.Certificate) (net.Conn, net.Conn, func(), error) {
 	stop := func() {}
 
-	serverConfig, err := newTLSListenerConfig(conf)
+	serverConfig, err := newTLSListenerConfig(conf, nil)
 	if err != nil {
 		return nil, nil, stop, err
 	}
@@ -143,7 +143,7 @@ func makeTLSSocks5ProxyPipe(conf *config.Config, authenticator socks5.Authentica
 	if err != nil {
 		return nil, nil, stop, err
 	}
-	serverConfig, err := newTLSListenerConfig(conf)
+	serverConfig, err := newTLSListenerConfig(conf, nil)
 	if err != nil {
 		return nil, nil, stop, err
 	}
@@ -216,7 +216,7 @@ func makeTLSHttpProxyPipe(conf *config.Config, proxyusername, proxypassword stri
 	if err != nil {
 		return nil, nil, stop, err
 	}
-	serverConfig, err := newTLSListenerConfig(conf)
+	serverConfig, err := newTLSListenerConfig(conf, nil)
 	if err != nil {
 		return nil, nil, stop, err
 	}
