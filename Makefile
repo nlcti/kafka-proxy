@@ -43,6 +43,9 @@ release: clean
 	rm -rf $(ROOT_DIR)/dist
 	curl -sL https://git.io/goreleaser | bash
 
+protoc.cert-provider:
+	protoc -I plugin/cert-provider/proto/ plugin/cert-provider/proto/cert-provider.proto --go_out=plugins=grpc:plugin/cert-provider/proto/
+
 protoc.local-auth:
 	protoc -I plugin/local-auth/proto/ plugin/local-auth/proto/auth.proto --go_out=plugins=grpc:plugin/local-auth/proto/
 
@@ -57,6 +60,9 @@ plugin.auth-user:
 
 plugin.auth-ldap:
 	CGO_ENABLED=0 go build -o build/auth-ldap $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" cmd/plugin-auth-ldap/main.go
+
+plugin.cert-provider:
+	CGO_ENABLED=0 go build -o build/cert-provider $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" cmd/plugin-cert-provider/main.go
 
 plugin.google-id-provider:
 	CGO_ENABLED=0 go build -o build/google-id-provider $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" cmd/plugin-googleid-provider/main.go
@@ -73,7 +79,7 @@ plugin.unsecured-jwt-provider:
 plugin.oidc-provider:
 	CGO_ENABLED=0 go build -o build/oidc-provider $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" cmd/plugin-oidc-provider/main.go
 
-all: build plugin.auth-user plugin.auth-ldap plugin.google-id-provider plugin.google-id-info plugin.unsecured-jwt-info plugin.unsecured-jwt-provider plugin.oidc-provider
+all: build plugin.auth-user plugin.auth-ldap plugin.cert-provider plugin.google-id-provider plugin.google-id-info plugin.unsecured-jwt-info plugin.unsecured-jwt-provider plugin.oidc-provider
 
 clean:
 	rm -rf $(ROOT_DIR)/build
