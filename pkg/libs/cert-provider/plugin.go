@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/grepplabs/kafka-proxy/pkg/libs/util"
@@ -12,6 +13,7 @@ import (
 )
 
 type CertificateProvider struct {
+	mu                sync.RWMutex
 	certFile          string
 	keyFile           string
 	certPEMBlock      []byte
@@ -33,6 +35,8 @@ func (cp *CertificateProvider) GetX509KeyPair(expiryDate string) ([]byte, []byte
 	}
 	// return data on new certificate
 	if !givenCertificateExpiry.IsZero() && cp.certificateExpiry.After(givenCertificateExpiry) {
+		cp.mu.RLock()
+		defer cp.mu.RUnlock()
 		return cp.certPEMBlock, cp.keyPEMBlock, nil
 	}
 
@@ -111,6 +115,8 @@ func (cp *CertificateProvider) extractNewCertificate() error {
 		return errors.Wrap(err, "failed to parse public/private key")
 	}
 
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
 	cp.certPEMBlock = certPEMBlock
 	cp.keyPEMBlock = keyPEMBlock
 	return nil
