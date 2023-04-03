@@ -2,28 +2,28 @@ package certprovider
 
 import (
 	"crypto/tls"
-	"fmt"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/grepplabs/kafka-proxy/pkg/libs/util"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 type CertificateProvider struct {
 	mu                sync.RWMutex
 	certFile          string
 	keyFile           string
+	checkIntervalMin  int
 	certPEMBlock      []byte
 	keyPEMBlock       []byte
 	certificateExpiry time.Time
 }
 
 type CertificateProviderOptions struct {
-	CertFile string
-	KeyFile  string
+	CertFile         string
+	KeyFile          string
+	CheckIntervalMin int
 }
 
 // GetX509KeyPair - getter function to return
@@ -53,8 +53,11 @@ func NewCertificateProvider(opts CertificateProviderOptions) (*CertificateProvid
 	if opts.KeyFile == "" {
 		return nil, errors.New("parameter updated-proxy-listener-key-file is required")
 	}
+	if opts.CheckIntervalMin == 0 {
+		return nil, errors.New("parameter update-check-interval-minutes is required")
+	}
 
-	certificateProvider := &CertificateProvider{certFile: opts.CertFile, keyFile: opts.KeyFile}
+	certificateProvider := &CertificateProvider{certFile: opts.CertFile, keyFile: opts.KeyFile, checkIntervalMin: opts.CheckIntervalMin}
 
 	// create certificate initially
 	certExpiry, err := util.ExtractExpiryFromCertificateFile(certificateProvider.certFile)
@@ -70,32 +73,8 @@ func NewCertificateProvider(opts CertificateProviderOptions) (*CertificateProvid
 	}
 	certificateProvider.certificateExpiry = certExpiry
 
-	handleFileUpdates := func() {
-		newCertExpiry, err := util.ExtractExpiryFromCertificateFile(certificateProvider.certFile)
-		if err != nil {
-			logrus.Error(fmt.Sprintf("failed to extract certificate expiry - %v", err))
-			return
-		}
-		if !newCertExpiry.IsZero() && newCertExpiry.After(certificateProvider.certificateExpiry) {
-			err = certificateProvider.extractNewCertificate()
-			if err != nil {
-				logrus.Error(fmt.Sprintf("failed to create certificate - %v", err))
-				return
-			}
-			certificateProvider.certificateExpiry = newCertExpiry
-		}
-	}
-
-	stopChannelCert := make(chan bool, 1)
-	err = util.WatchForUpdates(certificateProvider.certFile, stopChannelCert, handleFileUpdates)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot watch certificate file")
-	}
-	stopChannelKey := make(chan bool, 1)
-	err = util.WatchForUpdates(certificateProvider.keyFile, stopChannelKey, handleFileUpdates)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot watch key file")
-	}
+	certChecker := newCertChecker(certificateProvider, make(chan bool, 1))
+	go certChecker.refreshLoop()
 
 	return certificateProvider, nil
 }
