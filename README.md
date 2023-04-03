@@ -135,6 +135,10 @@ You can launch a kafka-proxy container with auth-ldap plugin for trying it out w
             --auth-local-param stringArray                         Authentication plugin parameter
             --auth-local-timeout duration                          Authentication timeout (default 10s)
             --bootstrap-server-mapping stringArray                 Mapping of Kafka bootstrap server address to local address (host:port,host:port(,advhost:advport))
+            --cert-provider-plugin-command string                  Path to certificate provider plugin binary
+            --cert-provider-plugin-enable                          Use plugin for TLS certificate
+            --cert-provider-plugin-log-level string                Log level of the certificate provider plugin (default "trace")
+            --cert-provider-plugin-param stringArray               Certificate provider plugin parameter
             --debug-enable                                         Enable Debug endpoint
             --debug-listen-address string                          Debug listen address (default "0.0.0.0:6060")
             --default-listener-ip string                           Default listener IP (default "0.0.0.0")
