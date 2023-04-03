@@ -19,7 +19,7 @@ var Handshake = plugin.HandshakeConfig{
 }
 
 var PluginMap = map[string]plugin.Plugin{
-	"certProvider": &CertificateProviderPlugin{},
+	"certificateProvider": &CertificateProviderPlugin{},
 }
 
 type CertificateProviderPlugin struct {
